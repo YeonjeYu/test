@@ -71,32 +71,101 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        
+        /* [2-1] 커스텀 마우스 포인터 스타일 (데스크톱 전용) */
+        @media (min-width: 1024px) {
+            html, body {
+                cursor: none; /* 기본 마우스 숨김 */
+            }
+            a, button, [role="button"], input, select, textarea {
+                cursor: none;
+            }
+            .custom-cursor {
+                width: 8px;
+                height: 8px;
+                background-color: var(--ansanOrange);
+                border-radius: 50%;
+                position: fixed;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 9999;
+                transition: width 0.1s, height 0.1s, background-color 0.3s;
+            }
+            .custom-cursor-follower {
+                width: 36px;
+                height: 36px;
+                border: 2px solid #0A5C36;
+                border-radius: 50%;
+                position: fixed;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 9998;
+                transition: transform 0.08s ease-out, width 0.2s, height 0.2s, border-color 0.3s, background-color 0.3s;
+            }
+            /* 호버 시 커서 모양 확대 */
+            .custom-cursor.hovered {
+                width: 12px;
+                height: 12px;
+                background-color: #FF6B35;
+            }
+            .custom-cursor-follower.hovered {
+                width: 56px;
+                height: 56px;
+                border-color: #FF6B35;
+                background-color: rgba(255, 107, 53, 0.05);
+            }
+        }
+        
+        /* 타이핑 커서 애니메이션 */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 0.8s step-start infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body class="bg-ansanDarkGray text-white selection:bg-ansanOrange selection:text-white overflow-x-hidden antialiased dark:bg-neutral-950">
 
+<!-- [2-1] 커스텀 마우스 포인터 구조 -->
+<div class="custom-cursor hidden lg:block" id="customCursor"></div>
+<div class="custom-cursor-follower hidden lg:block" id="customCursorFollower"></div>
+
+<!-- [2-2] 은은한 배경 캔버스 파티클 레이어 -->
+<canvas id="particleCanvas" class="fixed inset-0 pointer-events-none z-10 opacity-30 dark:opacity-20"></canvas>
+
+<!-- [2-1] 스크롤 진행률 바 -->
+<div class="fixed top-0 left-0 w-full h-1 bg-transparent z-[100]">
+    <div id="scrollProgressBar" class="h-full bg-ansanOrange w-0 transition-all duration-75"></div>
+</div>
+
 <!-- 고정형 헤더 -->
 <header id="mainHeader" class="fixed top-0 left-0 w-full z-50 bg-transparent py-3 md:py-4 text-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
-        <a href="#" class="flex items-center space-x-2">
+        <a href="#" class="flex items-center space-x-2 interactive-link">
             <span class="w-7 h-7 md:w-8 h-8 rounded-full bg-ansanOrange flex items-center justify-center text-white font-black text-xs md:text-sm">AS</span>
             <span class="gmarket-title text-base md:text-xl tracking-wider text-white" id="headerLogoText">ANSAN : 반전</span>
         </a>
         <nav class="hidden md:flex space-x-6 lg:space-x-8 text-sm font-medium" id="headerNav">
-            <a href="#hero" class="hover:text-ansanOrange transition-colors text-white">홈</a>
-            <a href="#intro" class="hover:text-ansanOrange transition-colors text-white">어떤 도시인가요?</a>
-            <a href="#evidence" class="hover:text-ansanOrange transition-colors text-white">매력 카드</a>
-            <a href="#reversal-detail" class="hover:text-ansanOrange transition-colors text-white">오해와 진실</a>
-            <a href="#visit-points" class="hover:text-ansanOrange transition-colors text-white">방문 포인트</a>
-            <a href="#gallery" class="hover:text-ansanOrange transition-colors text-white">갤러리</a>
+            <a href="#hero" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-home">홈</a>
+            <a href="#intro" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-intro">어떤 도시인가요?</a>
+            <a href="#evidence" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-cards">매력 카드</a>
+            <a href="#reversal-detail" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-truth">오해와 진실</a>
+            <a href="#visit-points" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-points">방문 포인트</a>
+            <a href="#gallery" class="hover:text-ansanOrange transition-colors text-white interactive-link" data-i18n="nav-gallery">갤러리</a>
         </nav>
         
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 z-50">
+            <!-- [2-1] 한국어/영어 언어 전환 버튼 -->
+            <button onclick="toggleLanguage()" class="w-8 h-8 md:w-9 h-9 rounded-full bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/15 border border-white/20 transition-all flex items-center justify-center text-xs font-bold text-white interactive-link mr-1" id="langBtn" aria-label="언어 전환 / Switch Language">
+                EN
+            </button>
             <!-- 다크모드 토글 버튼 -->
-            <button onclick="toggleDarkMode()" class="w-8 h-8 md:w-9 h-9 rounded-full bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/15 border border-white/20 transition-all flex items-center justify-center" aria-label="다크모드 전환">
+            <button onclick="toggleDarkMode()" class="w-8 h-8 md:w-9 h-9 rounded-full bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/15 border border-white/20 transition-all flex items-center justify-center interactive-link" aria-label="다크모드 전환">
                 <i class="fa-solid fa-moon text-white text-sm md:text-base dark:text-yellow-300" id="darkModeIcon"></i>
             </button>
-            <a href="#visit-points" class="bg-white/10 hover:bg-white/20 active:scale-95 text-[11px] md:text-xs px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/20 transition-all">
+            <a href="#visit-points" class="bg-white/10 hover:bg-white/20 active:scale-95 text-[11px] md:text-xs px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/20 transition-all interactive-link" data-i18n="btn-explore-top">
                 <i class="fa-solid fa-compass mr-1"></i> 안산 여행하기
             </a>
         </div>
@@ -110,33 +179,35 @@
 
     <div class="z-10 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
         <!-- 텍스트 영역 -->
-        <div class="lg:col-span-7 flex flex-col items-start text-left order-2 lg:order-1 mt-8 lg:mt-0">
+        <div class="lg:col-span-7 flex flex-col items-start text-left order-2 lg:order-1 mt-8 lg:mt-0" id="heroTextContainer">
             <div id="heroTag" class="mb-4 inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full text-[11px] md:text-xs text-ansanLightGray transition-all duration-1000">
                 <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse" id="tagDot"></span>
-                <span id="tagText">회색빛 편견에 가려진 도시</span>
+                <span id="tagText" data-i18n="hero-tag">회색빛 편견에 가려진 도시</span>
             </div>
             
-            <h1 id="heroTitle" class="gmarket-title text-3xl xs:text-4xl sm:text-5xl md:text-6xl text-ansanLightGray leading-tight md:leading-tight mb-4 md:mb-6 transition-all duration-1000 break-keep">
-                당신이 오해했던 도시,<br>
-                <span class="text-red-400" id="heroTitleColor">진짜 "안산"을 </span> 봅니다.
+            <!-- [2-2] 페이지 진입 시 타이틀 타이핑 연출 -->
+            <h1 id="heroTitle" class="gmarket-title text-3xl xs:text-4xl sm:text-5xl md:text-6xl text-ansanLightGray leading-tight md:leading-tight mb-4 md:mb-6 transition-all duration-1000 break-keep min-h-[3.2em]">
+                <span id="typingTitle" class="typing-cursor">당신이 오해했던 도시,</span><br>
+                <span class="text-red-400" id="heroTitleColor" data-i18n="hero-sub">진짜 "안산"을</span> <span data-i18n="hero-end">봅니다.</span>
             </h1>
             
-            <p id="heroDesc" class="text-sm sm:text-base md:text-lg text-gray-400 dark:text-gray-500 max-w-xl mb-6 md:mb-8 font-light leading-relaxed transition-all duration-1000 break-keep">
+            <p id="heroDesc" class="text-sm sm:text-base md:text-lg text-gray-400 dark:text-gray-500 max-w-xl mb-6 md:mb-8 font-light leading-relaxed transition-all duration-1000 break-keep" data-i18n="hero-desc">
                 공업 도시라는 회색빛 장막 뒤에 숨겨진 70%의 풍요로운 녹지. 편견을 걷어내는 순간, 완전히 새로운 안산의 숨결이 시작됩니다.
             </p>
 
-            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button onclick="toggleAnsanReversal()" class="group w-full sm:w-auto justify-center px-6 py-3.5 md:px-8 md:py-4 bg-ansanOrange text-white rounded-full font-bold shadow-lg shadow-ansanOrange/30 hover:shadow-ansanOrange/50 hover:scale-105 active:scale-95 transition-all flex items-center space-x-3 text-sm md:text-base">
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto z-20">
+                <button onclick="toggleAnsanReversal()" class="group w-full sm:w-auto justify-center px-6 py-3.5 md:px-8 md:py-4 bg-ansanOrange text-white rounded-full font-bold shadow-lg shadow-ansanOrange/30 hover:shadow-ansanOrange/50 hover:scale-105 active:scale-95 transition-all flex items-center space-x-3 text-sm md:text-base interactive-link">
                     <i id="switchIcon" class="fa-solid fa-toggle-off text-xl md:text-2xl group-hover:rotate-12 transition-transform"></i>
-                    <span id="switchText" class="tracking-wide">안산의 진짜 반전 보기</span>
+                    <span id="switchText" class="tracking-wide" data-i18n="btn-toggle">안산의 진짜 반전 보기</span>
                 </button>
-                <button onclick="scrollToSection('intro')" class="w-full sm:w-auto px-6 py-3.5 md:py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full font-semibold transition-all text-sm md:text-base">
+                <button onclick="scrollToSection('intro')" class="w-full sm:w-auto px-6 py-3.5 md:py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full font-semibold transition-all text-sm md:text-base interactive-link" data-i18n="btn-more">
                     자세히 알아보기
                 </button>
             </div>
         </div>
 
         <!-- 1-3. 첫인상용 그래픽 영역 (반전 스위칭 그래픽 컴포넌트) -->
+        <!-- [2-2] 패럴랙스 타겟 요소 -->
         <div class="lg:col-span-5 relative w-full h-[280px] xs:h-[320px] md:h-[400px] lg:h-[450px] rounded-3xl overflow-hidden shadow-2xl transition-graphic border border-white/5 bg-neutral-900 order-1 lg:order-2" id="heroGraphicBox">
             <!-- 회색빛 그래픽 (Default) -->
             <div id="graphicPrejudice" class="absolute inset-0 flex flex-col justify-center items-center p-6 md:p-8 transition-all duration-1000">
@@ -148,8 +219,8 @@
                         <i class="fa-solid fa-cloud-smoke absolute -top-2 -right-2 text-3xl text-gray-500/50"></i>
                     </div>
                     <div>
-                        <p class="gmarket-title text-xl md:text-2xl text-gray-300">편견: 공업 도시의 그늘</p>
-                        <p class="text-xs md:text-sm text-gray-500 mt-2">회색빛 굴뚝, 차가운 쇳소리, 이방인의 어색함</p>
+                        <p class="gmarket-title text-xl md:text-2xl text-gray-300" data-i18n="g-prej-title">편견: 공업 도시의 그늘</p>
+                        <p class="text-xs md:text-sm text-gray-500 mt-2" data-i18n="g-prej-desc">회색빛 굴뚝, 차가운 쇳소리, 이방인의 어색함</p>
                     </div>
                 </div>
             </div>
@@ -165,8 +236,8 @@
                         <i class="fa-solid fa-water text-4xl md:text-6xl text-cyan-300 self-end"></i>
                     </div>
                     <div>
-                        <p class="gmarket-title text-2xl md:text-3xl text-emerald-200">반전: 70%의 청정 녹색도시</p>
-                        <p class="text-xs md:text-sm text-emerald-100/80 mt-2">안산갈대습지공원, 대부도의 갯벌과 눈부신 낙조</p>
+                        <p class="gmarket-title text-2xl md:text-3xl text-emerald-200" data-i18n="g-real-title">반전: 70%의 청정 녹색도시</p>
+                        <p class="text-xs md:text-sm text-emerald-100/80 mt-2" data-i18n="g-real-desc">안산갈대습지공원, 대부도의 갯벌과 눈부신 낙조</p>
                     </div>
                 </div>
             </div>
@@ -178,29 +249,29 @@
 <section id="intro" class="bg-ansanSoftCream text-gray-800 py-16 md:py-28 relative overflow-hidden dark:bg-neutral-900 dark:text-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div class="max-w-4xl mx-auto text-center reveal-node">
-            <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest uppercase block mb-3">THE REAL STORY</span>
-            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen leading-tight mb-6 md:mb-8 dark:text-emerald-400">
+            <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest uppercase block mb-3" data-i18n="intro-subtag">THE REAL STORY</span>
+            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen leading-tight mb-6 md:mb-8 dark:text-emerald-400" data-i18n="intro-title">
                 안산시는 어떤 도시인가요?
             </h2>
             
-            <p class="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-light mb-8 md:mb-12 max-w-3xl mx-auto break-keep">
+            <p class="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-light mb-8 md:mb-12 max-w-3xl mx-auto break-keep" data-i18n="intro-desc">
                 많은 이들에게 안산은 공업 단지, 회색빛 공장지대, 혹은 외지인과 치안에 대한 막연한 부정적인 이야기들로 먼저 기억되곤 합니다. 
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left mt-8">
                 <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-red-500/10 dark:bg-neutral-950 dark:border-red-500/20">
                     <h3 class="gmarket-title text-lg md:text-xl text-red-500 mb-3 md:mb-4">
-                        <i class="fa-solid fa-circle-exclamation mr-2"></i> 대중들의 차가운 시선과 오해
+                        <i class="fa-solid fa-circle-exclamation mr-2"></i> <span data-i18n="intro-col1-title">대중들의 차가운 시선과 오해</span>
                     </h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed break-keep">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed break-keep" data-i18n="intro-col1-desc">
                         산업화 시기에 구축된 거대 반월공단 이미지, 외국인 노동자가 많아 왠지 무섭고 어두울 것이라는 편견, 미디어에서 각색된 단편적인 뉴스들이 모여 안산을 차갑게 가두어 왔습니다.
                     </p>
                 </div>
                 <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-emerald-500/10 dark:bg-neutral-950 dark:border-emerald-500/20">
                     <h3 class="gmarket-title text-lg md:text-xl text-ansanGreen dark:text-emerald-400 mb-3 md:mb-4">
-                        <i class="fa-solid fa-circle-check mr-2"></i> 숨겨진 가슴 벅찬 사실들
+                        <i class="fa-solid fa-circle-check mr-2"></i> <span data-i18n="intro-col2-title">숨겨진 가슴 벅찬 사실들</span>
                     </h3>
-                    <p class="text-gray-600 dark:text-gray-300 text-xs md:text-sm leading-relaxed break-keep">
+                    <p class="text-gray-600 dark:text-gray-300 text-xs md:text-sm leading-relaxed break-keep" data-i18n="intro-col2-desc">
                         그러나 실제로 안산은 <strong>전국 대도시 최고 수준인 70% 이상의 도심 녹지율</strong>을 품고 있으며, 강력범죄율이 현저하게 감축된 안전한 계획도시이자 대부도 해안선과 풍부한 먹거리, 다채로운 거리 축제를 간직한 매력 만점의 명소입니다.
                     </p>
                 </div>
@@ -214,49 +285,50 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="text-center max-w-3xl mx-auto mb-12 md:mb-20 reveal-node">
             <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest block mb-3">ANSAN’S THREE KEYS</span>
-            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400">
+            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400" data-i18n="ev-title">
                 가장 완벽한 세 가지 반전 증거
             </h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <!-- [2-2] 카드 호버 시 기울어지고 가벼운 광원/리프트 반응 -->
             <!-- 카드 1: 높은 녹지율 -->
-            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800">
+            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-3 hover:shadow-2xl hover:shadow-ansanGreen/10 dark:hover:shadow-ansanGreen/5 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800">
                 <div>
                     <div class="w-10 h-10 md:w-12 md:h-12 bg-ansanLightGreen dark:bg-emerald-950 rounded-full flex items-center justify-center text-ansanGreen dark:text-emerald-300 mb-6 md:mb-8">
                         <i class="fa-solid fa-leaf text-xl md:text-2xl"></i>
                     </div>
                     <span class="text-ansanGreen dark:text-emerald-400 font-bold text-[10px] md:text-xs tracking-wider block mb-2">POINT 01</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">전국 최고 수준의<br class="hidden sm:inline">맑고 푸른 도심 녹지율</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="ev-card1-title">전국 최고 수준의<br class="hidden sm:inline">맑고 푸른 도심 녹지율</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep" data-i18n="ev-card1-desc">
                         안산은 자연 정화의 보고인 ‘안산갈대습지공원’을 시작으로 도심 구석구석을 유기적인 숲길로 연결한 공원 설계 도시입니다. 사방을 둘러보아도 항상 나무와 맑은 공기가 당신의 일상을 정화합니다.
                     </p>
                 </div>
             </div>
 
             <!-- 카드 2: 범죄율 오해 -->
-            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800" style="transition-delay: 100ms;">
+            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-3 hover:shadow-2xl hover:shadow-ansanOrange/10 dark:hover:shadow-ansanOrange/5 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800" style="transition-delay: 100ms;">
                 <div>
                     <div class="w-10 h-10 md:w-12 md:h-12 bg-orange-100 dark:bg-orange-950/50 rounded-full flex items-center justify-center text-ansanOrange dark:text-orange-400 mb-6 md:mb-8">
                         <i class="fa-solid fa-shield-halved text-xl md:text-2xl"></i>
                     </div>
                     <span class="text-ansanOrange font-bold text-[10px] md:text-xs tracking-wider block mb-2">POINT 02</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">빅데이터로 가볍게 깨부수는<br class="hidden sm:inline">체감 안전 지수</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="ev-card2-title">빅데이터로 가볍게 깨부수는<br class="hidden sm:inline">체감 안전 지수</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep" data-i18n="ev-card2-desc">
                         미디어가 증폭해 온 부정적 프레임과는 다릅니다. 안산시는 전국에서 손꼽히는 촘촘한 스마트 치안 CCTV 플랫폼을 가동하여 5대 범죄 발생율을 급격하게 떨어트렸으며, 평화로운 안심 로컬 라이프를 사수하고 있습니다.
                     </p>
                 </div>
             </div>
 
             <!-- 카드 3: 가볼만한 곳 -->
-            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800 md:col-span-2 lg:col-span-1" style="transition-delay: 200ms;">
+            <div class="bg-ansanSoftCream dark:bg-neutral-900 rounded-3xl p-6 md:p-8 hover:-translate-y-3 hover:shadow-2xl hover:shadow-cyan-500/10 dark:hover:shadow-cyan-500/5 transition-all duration-300 flex flex-col justify-between reveal-node border border-gray-100 dark:border-neutral-800 md:col-span-2 lg:col-span-1" style="transition-delay: 200ms;">
                 <div>
                     <div class="w-10 h-10 md:w-12 md:h-12 bg-emerald-100 dark:bg-cyan-950/50 rounded-full flex items-center justify-center text-emerald-800 dark:text-cyan-400 mb-6 md:mb-8">
                         <i class="fa-solid fa-map text-xl md:text-2xl"></i>
                     </div>
                     <span class="text-emerald-800 dark:text-cyan-400 font-bold text-[10px] md:text-xs tracking-wider block mb-2">POINT 03</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">수도권 최인접 해변과<br class="hidden sm:inline">오감만족 여행자 코스</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="ev-card3-title">수도권 최인접 해변과<br class="hidden sm:inline">오감만족 여행자 코스</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light break-keep" data-i18n="ev-card3-desc">
                         끝없이 넓게 펼쳐진 서해 대부도의 황홀한 낙조, 원곡동 골목길에서 향유하는 아시아 전역의 풍성한 오리지널 미식 문화, 그리고 조선 최고의 화가 김홍도의 예술적 기운이 깃든 미술관까지 매일 새로운 재미가 찾아옵니다.
                     </p>
                 </div>
@@ -270,8 +342,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="text-center max-w-3xl mx-auto mb-12 md:mb-16 reveal-node">
             <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest block mb-3">THE SCIENTIFIC EVIDENCE</span>
-            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-4xl">팩트 체크: 편견을 거둬내는 순간의 진실</h2>
-            <p class="text-gray-400 mt-3 text-xs md:text-sm font-light">추측이 아닌 숫자와 객관적인 사실이 안산시의 매력을 가감 없이 보여줍니다.</p>
+            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-4xl" data-i18n="re-title">팩트 체크: 편견을 거둬내는 순간의 진실</h2>
+            <p class="text-gray-400 mt-3 text-xs md:text-sm font-light" data-i18n="re-subtitle">추측이 아닌 숫자와 객관적인 사실이 안산시의 매력을 가감 없이 보여줍니다.</p>
         </div>
 
         <div class="space-y-12 md:space-y-16">
@@ -279,27 +351,27 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-center reveal-node">
                 <div class="lg:col-span-5 bg-gradient-to-tr from-ansanGreen to-emerald-950 p-6 md:p-8 rounded-3xl border border-emerald-800">
                     <span class="text-emerald-400 font-bold text-[10px] md:text-xs">TRUTH CHECK 01</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-emerald-200">도대체 얼마나 녹지가 많나요?</h3>
-                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-emerald-200" data-i18n="re-col1-header">도대체 얼마나 녹지가 많나요?</h3>
+                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep" data-i18n="re-col1-desc">
                         공단 배후 도시로 오인받던 안산은 사실 공업단지 면적의 수 배가 넘는 녹지축을 보유하고 있습니다. 도심 한가운데 수십만 평에 이르는 공원들이 기하학적으로 배치된 대한민국 최초의 완전 계획도시 모델입니다.
                     </p>
                     <div class="flex items-center space-x-3 md:space-x-4">
                         <div class="text-center bg-black/30 p-3 md:p-4 rounded-xl flex-1">
-                            <p class="text-[10px] md:text-xs text-gray-400">안산시 녹지비율</p>
+                            <p class="text-[10px] md:text-xs text-gray-400" data-i18n="re-stat1-tag">안산시 녹지비율</p>
                             <p class="gmarket-title text-xl md:text-2xl text-emerald-300 mt-1">74%</p>
                         </div>
                         <div class="text-center bg-black/30 p-3 md:p-4 rounded-xl flex-1">
-                            <p class="text-[10px] md:text-xs text-gray-400">전국 대도시 평균</p>
+                            <p class="text-[10px] md:text-xs text-gray-400" data-i18n="re-stat2-tag">전국 대도시 평균</p>
                             <p class="gmarket-title text-xl md:text-2xl text-gray-400 mt-1">~40%</p>
                         </div>
                     </div>
                 </div>
                 <div class="lg:col-span-7 space-y-3 md:space-y-4">
-                    <h4 class="gmarket-title text-lg md:text-xl text-ansanOrange">“숨 막히던 회색이 피톤치드 가득한 녹색으로”</h4>
-                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep">
+                    <h4 class="gmarket-title text-lg md:text-xl text-ansanOrange" data-i18n="re-col1-sub">“숨 막히던 회색이 피톤치드 가득한 녹색으로”</h4>
+                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep" data-i18n="re-col1-subdesc">
                         안산 시내 어디에서든 머리맡을 들어 올리면 푸른 산과 공원 산책로가 시야에 닿습니다. 수만 평의 자연을 한 걸음에 누리는 것은 안산 시민들만의 평범한 일상이자 비교할 수 없는 거주 강점입니다.
                     </p>
-                    <div class="border-l-4 border-emerald-500 pl-4 py-1.5 italic text-xs md:text-sm text-emerald-100 break-keep">
+                    <div class="border-l-4 border-emerald-500 pl-4 py-1.5 italic text-xs md:text-sm text-emerald-100 break-keep" data-i18n="re-col1-quote">
                         "안산시 1인당 도시공원 확보 면적은 서울시 평균의 무려 2배에 육박합니다."
                     </div>
                 </div>
@@ -308,35 +380,35 @@
             <!-- 4-2. 범죄도시 착각 -> 범죄율 통계표 -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-center reveal-node">
                 <div class="lg:col-span-7 order-2 lg:order-1 space-y-4">
-                    <h4 class="gmarket-title text-lg md:text-xl text-ansanOrange">“실제로 확인하는 우리 동네 치안 등급”</h4>
-                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep">
+                    <h4 class="gmarket-title text-lg md:text-xl text-ansanOrange" data-i18n="re-col2-title">“실제로 확인하는 우리 동네 치안 등급”</h4>
+                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep" data-i18n="re-col2-desc">
                         안산시의 범죄율이 터무니없이 높다는 편견은 미디어가 극적으로 소비한 허상에 가깝습니다. 실제 안전행정부 및 수사기관 통계를 확인해 보면, 대형 CCTV 통합관제망이 24시간 도심 전체를 밀착 사수하고 있어 강력범죄 건수는 다른 주요 광역시 및 인접 수도권보다 확연하게 통제되고 있습니다.
                     </p>
                     
                     <!-- 전국 지역별 중범죄 통계표 (데모 테이블) -->
                     <div class="overflow-x-auto rounded-2xl border border-white/10 bg-black/30 no-scrollbar">
-                        <table class="w-full text-left border-collapse text-xs md:text-sm min-w-[340px]">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm min-w-[340px]" id="statTable">
                             <thead>
                                 <tr class="bg-white/5 border-b border-white/10 text-gray-300">
-                                    <th class="p-3 font-semibold text-[11px] md:text-xs">비교 행정 구역</th>
-                                    <th class="p-3 font-semibold text-center text-[11px] md:text-xs">인구 10만 명당 범죄 발생율</th>
-                                    <th class="p-3 font-semibold text-center text-[11px] md:text-xs">체감 치안 만족도</th>
+                                    <th class="p-3 font-semibold text-[11px] md:text-xs" data-i18n="table-head1">비교 행정 구역</th>
+                                    <th class="p-3 font-semibold text-center text-[11px] md:text-xs" data-i18n="table-head2">인구 10만 명당 범죄 발생율</th>
+                                    <th class="p-3 font-semibold text-center text-[11px] md:text-xs" data-i18n="table-head3">체감 치안 만족도</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-400">
                                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                    <td class="p-3 font-medium text-white text-[11px] md:text-xs">전국 주요 광역 대도시 평균</td>
-                                    <td class="p-3 text-center text-[11px] md:text-xs">약 1,120건</td>
+                                    <td class="p-3 font-medium text-white text-[11px] md:text-xs" data-i18n="table-row1-col1">전국 주요 광역 대도시 평균</td>
+                                    <td class="p-3 text-center text-[11px] md:text-xs" data-i18n="table-row1-col2">약 1,120건</td>
                                     <td class="p-3 text-center text-yellow-400 text-[10px] md:text-xs">★ ★ ★ ☆ ☆</td>
                                 </tr>
                                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                    <td class="p-3 font-medium text-white text-[11px] md:text-xs">수도권 인구 밀집 신도시 A</td>
-                                    <td class="p-3 text-center text-[11px] md:text-xs">약 980건</td>
+                                    <td class="p-3 font-medium text-white text-[11px] md:text-xs" data-i18n="table-row2-col1">수도권 인구 밀집 신도시 A</td>
+                                    <td class="p-3 text-center text-[11px] md:text-xs" data-i18n="table-row2-col2">약 980건</td>
                                     <td class="p-3 text-center text-yellow-400 text-[10px] md:text-xs">★ ★ ★ ★ ☆</td>
                                 </tr>
                                 <tr class="bg-ansanGreen/20 border-b border-ansanGreen/30 hover:bg-ansanGreen/35 transition-colors">
-                                    <td class="p-3 font-bold text-emerald-400 text-[11px] md:text-xs">경기도 안산시 (실제 지표)</td>
-                                    <td class="p-3 text-center text-emerald-300 font-bold text-[11px] md:text-xs">약 810건 (안전망 확보)</td>
+                                    <td class="p-3 font-bold text-emerald-400 text-[11px] md:text-xs" data-i18n="table-row3-col1">경기도 안산시 (실제 지표)</td>
+                                    <td class="p-3 text-center text-emerald-300 font-bold text-[11px] md:text-xs" data-i18n="table-row3-col2">약 810건 (안전망 확보)</td>
                                     <td class="p-3 text-center text-yellow-400 text-[10px] md:text-xs">★ ★ ★ ★ ★</td>
                                 </tr>
                             </tbody>
@@ -345,13 +417,13 @@
                 </div>
                 <div class="lg:col-span-5 bg-gradient-to-tr from-orange-950 to-neutral-900 p-6 md:p-8 rounded-3xl border border-orange-900 order-1 lg:order-2">
                     <span class="text-ansanOrange font-bold text-[10px] md:text-xs">TRUTH CHECK 02</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-orange-200">정말로 치안이 불안할까요?</h3>
-                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-orange-200" data-i18n="re-col2-header">정말로 치안이 불안할까요?</h3>
+                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep" data-i18n="re-col2-boxdesc">
                         세계가 인정하는 첨단 스마트 CCTV 안심 귀가 서비스를 탑재하여 24시간 실시간 사각지대 차단 시스템이 작동하고 있습니다. 다채로운 인종이 서로의 로컬 문화를 지지하며 한없이 평화롭게 거주하는 아름다운 상생의 모델입니다.
                     </p>
                     <div class="flex items-center space-x-2 text-ansanOrange">
                         <i class="fa-solid fa-circle-check text-xs md:text-sm"></i>
-                        <span class="text-[10px] md:text-xs font-bold">국토교통부 스마트시티 인증 획득</span>
+                        <span class="text-[10px] md:text-xs font-bold" data-i18n="re-col2-boxstat">국토교통부 스마트시티 인증 획득</span>
                     </div>
                 </div>
             </div>
@@ -360,24 +432,24 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-center reveal-node">
                 <div class="lg:col-span-5 bg-gradient-to-tr from-neutral-900 to-emerald-950 p-6 md:p-8 rounded-3xl border border-emerald-900">
                     <span class="text-emerald-400 font-bold text-[10px] md:text-xs">TRUTH CHECK 03</span>
-                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-emerald-200">안산은 회색 공장뿐이다?</h3>
-                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl mt-2 mb-3 md:mb-4 text-emerald-200" data-i18n="re-col3-header">안산은 회색 공장뿐이다?</h3>
+                    <p class="text-gray-300 text-xs md:text-sm leading-relaxed mb-6 font-light break-keep" data-i18n="re-col3-desc">
                         조선시대 단원 김홍도가 산수화를 그리고 성장하던 호젓하고 수려한 경관이 바로 안산의 기반입니다. 대부도 낙조전망대와 구봉도 대부해솔길은 매주 주말 전국에서 수많은 사진작가들이 줄을 서서 찾아올 정도로 전율 어린 경관을 선사합니다.
                     </p>
                     <div class="flex space-x-3 md:space-x-4">
                         <div class="flex-1 text-center bg-black/20 p-2.5 md:p-3 rounded-lg border border-white/5">
-                            <p class="text-[10px] md:text-xs text-gray-400">매년 거리극 방문자</p>
-                            <p class="font-bold text-emerald-300 text-sm md:text-base mt-1">70만 명+</p>
+                            <p class="text-[10px] md:text-xs text-gray-400" data-i18n="re-col3-stat1-tag">매년 거리극 방문자</p>
+                            <p class="font-bold text-emerald-300 text-sm md:text-base mt-1" data-i18n="re-col3-stat1-val">70만 명+</p>
                         </div>
                         <div class="flex-1 text-center bg-black/20 p-2.5 md:p-3 rounded-lg border border-white/5">
-                            <p class="text-[10px] md:text-xs text-gray-400">대부도 연간 관광자</p>
-                            <p class="font-bold text-emerald-300 text-sm md:text-base mt-1">100만 명+</p>
+                            <p class="text-[10px] md:text-xs text-gray-400" data-i18n="re-col3-stat2-tag">대부도 연간 관광자</p>
+                            <p class="font-bold text-emerald-300 text-sm md:text-base mt-1" data-i18n="re-col3-stat2-val">100만 명+</p>
                         </div>
                     </div>
                 </div>
                 <div class="lg:col-span-7 space-y-3 md:space-y-4">
-                    <h4 class="gmarket-title text-lg md:text-xl text-emerald-400">“도심 속 아트 갤러리부터 이색 대축제까지”</h4>
-                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep">
+                    <h4 class="gmarket-title text-lg md:text-xl text-emerald-400" data-i18n="re-col3-sub">“도심 속 아트 갤러리부터 이색 대축제까지”</h4>
+                    <p class="text-gray-400 text-xs md:text-sm leading-relaxed break-keep" data-i18n="re-col3-subdesc">
                         멀리 비행기를 타고 갈 필요 없이, 단 하루 만에 대부해솔길의 시원한 바닷바람과 원곡동 다문화거리 아시안 정통 셰프 푸드코스를 섭렵하고 경기도미술관의 우아한 실내 조각전을 산책할 수 있습니다. 안산국제거리극축제가 열리는 5월에는 온 거리가 거대한 판타지 동화 속 무대로 탈바꿈합니다.
                     </p>
                 </div>
@@ -391,53 +463,53 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="text-center max-w-2xl mx-auto mb-12 md:mb-16 reveal-node">
             <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest block mb-3">ANSAN VISIT POINTS</span>
-            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400">안산 라이프 핵심 로드맵</h2>
-            <p class="text-gray-500 dark:text-gray-400 mt-3 text-xs md:text-sm font-light">정착부터 관광, 축제까지 마음에 드는 이상적인 루트를 선택해 보세요.</p>
+            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400" data-i18n="pt-title">안산 라이프 핵심 로드맵</h2>
+            <p class="text-gray-500 dark:text-gray-400 mt-3 text-xs md:text-sm font-light" data-i18n="pt-subtitle">정착부터 관광, 축제까지 마음에 드는 이상적인 루트를 선택해 보세요.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <!-- 포인트 1: 거주하기 좋은 곳 -->
-            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 reveal-node dark:bg-neutral-950 dark:border-neutral-800">
+            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl hover:-translate-y-2 transition-all duration-300 reveal-node dark:bg-neutral-950 dark:border-neutral-800">
                 <div>
                     <div class="inline-block bg-ansanLightGreen dark:bg-emerald-950 text-ansanGreen dark:text-emerald-300 font-bold text-[10px] md:text-xs px-2.5 py-1 rounded-full mb-4 md:mb-6">RESIDE</div>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">살기 좋은 주거와 교통 인프라</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="pt-card1-title">살기 좋은 주거와 교통 인프라</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep" data-i18n="pt-card1-desc">
                         사통팔달 전철망과 신안산선 개통 예정으로 서울 핵심지까지 30분대 진입을 눈앞에 두고 있습니다. 넓은 녹지로 미세먼지가 차단되며 도보 거리마다 어린이 공원과 종합 편의시설이 탄탄하게 배치되어 신혼부부 및 패밀리층의 거주 인기가 매우 높습니다.
                     </p>
                 </div>
                 <div class="bg-ansanSoftCream dark:bg-neutral-900 p-4 rounded-2xl text-[10px] md:text-xs text-gray-600 dark:text-gray-300 flex items-center">
                     <i class="fa-solid fa-house-circle-check text-ansanGreen dark:text-emerald-400 text-base md:text-lg mr-3"></i>
-                    <span>서울 접근성과 쾌적한 숲세권 일상이 결합된 도시</span>
+                    <span data-i18n="pt-card1-tag">서울 접근성과 쾌적한 숲세권 일상이 결합된 도시</span>
                 </div>
             </div>
 
             <!-- 포인트 2: 관광지 -->
-            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 reveal-node dark:bg-neutral-950 dark:border-neutral-800" style="transition-delay: 100ms;">
+            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl hover:-translate-y-2 transition-all duration-300 reveal-node dark:bg-neutral-950 dark:border-neutral-800" style="transition-delay: 100ms;">
                 <div>
                     <div class="inline-block bg-orange-100 dark:bg-orange-950/50 text-ansanOrange dark:text-orange-400 font-bold text-[10px] md:text-xs px-2.5 py-1 rounded-full mb-4 md:mb-6">TRAVEL</div>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">감성 터지는 바다와 로컬 명소</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="pt-card2-title">감성 터지는 바다와 로컬 명소</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep" data-i18n="pt-card2-desc">
                         안산의 보물섬 대부도는 조력발전소 달전망대에서 아찔한 바다전망을 구경하고, 구봉도 바닷길의 낙조를 보며 여유를 찾을 수 있는 수도권 대표 힐링 코스입니다. 주말마다 해변을 따라 감성 카페들이 성황을 이룹니다.
                     </p>
                 </div>
                 <div class="bg-ansanSoftCream dark:bg-neutral-900 p-4 rounded-2xl text-[10px] md:text-xs text-gray-600 dark:text-gray-300 flex items-center">
                     <i class="fa-solid fa-umbrella-beach text-ansanOrange dark:text-orange-400 text-base md:text-lg mr-3"></i>
-                    <span>시화호 달전망대 및 대부해솔길 드라이브 추천</span>
+                    <span data-i18n="pt-card2-tag">시화호 달전망대 및 대부해솔길 드라이브 추천</span>
                 </div>
             </div>
 
             <!-- 포인트 3: 축제 -->
-            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 reveal-node md:col-span-2 lg:col-span-1 dark:bg-neutral-950 dark:border-neutral-800" style="transition-delay: 200ms;">
+            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-gray-100 flex flex-col justify-between hover:shadow-xl hover:-translate-y-2 transition-all duration-300 reveal-node md:col-span-2 lg:col-span-1 dark:bg-neutral-950 dark:border-neutral-800" style="transition-delay: 200ms;">
                 <div>
                     <div class="inline-block bg-emerald-100 dark:bg-cyan-950/50 text-emerald-800 dark:text-cyan-400 font-bold text-[10px] md:text-xs px-2.5 py-1 rounded-full mb-4 md:mb-6">FESTIVAL</div>
-                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4">글로벌 에너지가 숨쉬는 축제</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep">
+                    <h3 class="gmarket-title text-xl md:text-2xl text-gray-900 dark:text-white mb-3 md:mb-4" data-i18n="pt-card3-title">글로벌 에너지가 숨쉬는 축제</h3>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm leading-relaxed font-light mb-6 break-keep" data-i18n="pt-card3-desc">
                         아스팔트 광덕대로를 화려한 서커스와 공중 퍼포먼스로 가득 메우는 ‘안산국제거리극축제’와 아시안 정통 셰프들의 맛과 흥겨움이 가득한 다문화 푸드 페스티벌은 오직 안산에서만 만끽할 수 있는 다채로운 문화 유산입니다.
                     </p>
                 </div>
                 <div class="bg-ansanSoftCream dark:bg-neutral-900 p-4 rounded-2xl text-[10px] md:text-xs text-gray-600 dark:text-gray-300 flex items-center">
                     <i class="fa-solid fa-masks-theater text-emerald-700 dark:text-emerald-400 text-base md:text-lg mr-3"></i>
-                    <span>매년 5월 펼쳐지는 한국 최고의 야외 공연 축제</span>
+                    <span data-i18n="pt-card3-tag">매년 5월 펼쳐지는 한국 최고의 야외 공연 축제</span>
                 </div>
             </div>
         </div>
@@ -449,8 +521,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="text-center max-w-3xl mx-auto mb-12 md:mb-16 reveal-node">
             <span class="text-ansanOrange font-bold text-xs md:text-sm tracking-widest block mb-3">ANSAN SCENARY</span>
-            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400">안산 로컬 갤러리</h2>
-            <p class="text-gray-500 dark:text-gray-400 mt-3 text-xs md:text-sm font-light">아름다운 안산의 일상과 풍경을 생생한 실제 사진으로 감상해 보세요.</p>
+            <h2 class="gmarket-title text-2xl sm:text-3xl md:text-5xl text-ansanGreen dark:text-emerald-400" data-i18n="ga-title">안산 로컬 갤러리</h2>
+            <p class="text-gray-500 dark:text-gray-400 mt-3 text-xs md:text-sm font-light" data-i18n="ga-subtitle">아름다운 안산의 일상과 풍경을 생생한 실제 사진으로 감상해 보세요.</p>
         </div>
 
         <!-- 6장 실제 사진 그리드 (마우스 호버 시 줌인 효과 및 설명 제공) -->
@@ -470,8 +542,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-emerald-300 font-bold tracking-wider">FOREST & ECO</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">안산갈대습지공원</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">자연 정화의 보고이자 바람에 흔들리는 갈대의 합창</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card1-title">안산갈대습지공원</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card1-desc">자연 정화의 보고이자 바람에 흔들리는 갈대의 합창</p>
                 </div>
             </div>
 
@@ -487,8 +559,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-amber-300 font-bold tracking-wider">SUNSET BEACH</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">대부도 낙조 전망대</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">서해안 바다 위를 가득 물들이는 경이로운 황금빛 석양</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card2-title">대부도 낙조 전망대</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card2-desc">서해안 바다 위를 가득 물들이는 경이로운 황금빛 석양</p>
                 </div>
             </div>
 
@@ -504,8 +576,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-orange-300 font-bold tracking-wider">FESTIVAL</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">안산국제거리극축제</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">매년 봄, 일상적인 아스팔트를 동화 속 극장으로 깨우는 열정</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card3-title">안산국제거리극축제</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card3-desc">매년 봄, 일상적인 아스팔트를 동화 속 극장으로 깨우는 열정</p>
                 </div>
             </div>
 
@@ -521,8 +593,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-blue-300 font-bold tracking-wider">ART & HERITAGE</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">경기도미술관</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">화랑유원지 호수 옆에 자리 잡은 수준 높은 현대 예술 공간</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card4-title">경기도미술관</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card4-desc">화랑유원지 호수 옆에 자리 잡은 수준 높은 현대 예술 공간</p>
                 </div>
             </div>
 
@@ -538,8 +610,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-cyan-300 font-bold tracking-wider">CLEAN ENERGY</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">시화호 조력발전소</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">세계 최대 규모를 자랑하는 친환경 해양 청정 에너지 거점</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card5-title">시화호 조력발전소</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card5-desc">세계 최대 규모를 자랑하는 친환경 해양 청정 에너지 거점</p>
                 </div>
             </div>
 
@@ -555,8 +627,8 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                 <div class="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 text-white z-10">
                     <p class="text-[10px] text-purple-300 font-bold tracking-wider">GLOBAL CULTURE</p>
-                    <h4 class="gmarket-title text-base md:text-lg mt-1">원곡동 다문화거리</h4>
-                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">세계 곳곳의 신선하고 개성 넘치는 로컬 푸드가 공존하는 미식 성지</p>
+                    <h4 class="gmarket-title text-base md:text-lg mt-1" data-i18n="ga-card6-title">원곡동 다문화거리</h4>
+                    <p class="text-[10px] md:text-xs text-gray-300 mt-1 font-light opacity-90 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300" data-i18n="ga-card6-desc">세계 곳곳의 신선하고 개성 넘치는 로컬 푸드가 공존하는 미식 성지</p>
                 </div>
             </div>
         </div>
@@ -569,14 +641,14 @@
     <div class="absolute -left-24 -top-24 w-72 h-72 md:w-96 md:h-96 bg-emerald-700/20 rounded-full blur-3xl pointer-events-none"></div>
 
     <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 relative z-10 reveal-node">
-        <h3 class="gmarket-title text-2xl sm:text-3xl md:text-5xl mb-4 md:mb-6 break-keep">편견 너머에 진정한 가치가 기다립니다</h3>
-        <p class="text-emerald-100 text-xs sm:text-sm md:text-base max-w-2xl mx-auto mb-8 md:mb-10 leading-relaxed font-light break-keep">
+        <h3 class="gmarket-title text-2xl sm:text-3xl md:text-5xl mb-4 md:mb-6 break-keep" data-i18n="cta-title">편견 너머에 진정한 가치가 기다립니다</h3>
+        <p class="text-emerald-100 text-xs sm:text-sm md:text-base max-w-2xl mx-auto mb-8 md:mb-10 leading-relaxed font-light break-keep" data-i18n="cta-desc">
             안산을 향한 오래된 프레임을 한 발짝만 벗어나 보세요. 푸른 자연과 흥겨운 거리, 다정한 일상의 온기가 당신을 반갑게 맞이합니다.
         </p>
         
         <!-- 클릭 시 확대 반응 효과 및 5번 섹션으로 스크롤 스무스 스크롤 이동 연계 -->
-        <button onclick="smoothScrollToPoints()" class="group bg-ansanOrange hover:bg-orange-600 text-white font-bold px-8 py-4 md:px-10 md:py-5 rounded-full shadow-lg shadow-ansanOrange/30 hover:scale-110 active:scale-95 transition-all duration-300 inline-flex items-center space-x-3 text-sm md:text-lg">
-            <span class="tracking-wide">안산시 소개 더 알아보기</span>
+        <button onclick="smoothScrollToPoints()" class="group bg-ansanOrange hover:bg-orange-600 text-white font-bold px-8 py-4 md:px-10 md:py-5 rounded-full shadow-lg shadow-ansanOrange/30 hover:scale-110 active:scale-95 transition-all duration-300 inline-flex items-center space-x-3 text-sm md:text-lg interactive-link">
+            <span class="tracking-wide" data-i18n="btn-explore-bottom">안산시 소개 더 알아보기</span>
             <i class="fa-solid fa-arrow-down-long group-hover:translate-y-1 transition-transform"></i>
         </button>
     </div>
@@ -589,44 +661,310 @@
             <div class="text-center md:text-left">
                 <div class="flex items-center space-x-2 mb-3 justify-center md:justify-start">
                     <span class="w-7 h-7 rounded-full bg-ansanGreen flex items-center justify-center text-white font-black text-xs">AS</span>
-                    <span class="gmarket-title text-lg text-white tracking-widest">안산시 브랜드 커뮤니티</span>
+                    <span class="gmarket-title text-lg text-white tracking-widest" data-i18n="footer-brand">안산시 브랜드 커뮤니티</span>
                 </div>
-                <p class="text-[11px] md:text-xs text-gray-500 max-w-md break-keep">
+                <p class="text-[11px] md:text-xs text-gray-500 max-w-md break-keep" data-i18n="footer-desc">
                     이 웹사이트는 회색빛 오해 속에 숨겨진 경기 안산시의 청량하고 포용력 가득한 본모습을 투명하게 알리기 위해 설계된 로컬 캠페인 웹 아카이브입니다.
                 </p>
             </div>
             
-            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <a href="https://www.ansan.go.kr" target="_blank" rel="noopener noreferrer" class="bg-white/5 hover:bg-white/10 active:scale-95 text-center text-white font-medium px-5 py-3 rounded-xl border border-white/10 transition-all text-xs md:text-sm flex items-center justify-center space-x-2">
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto z-20">
+                <a href="https://www.ansan.go.kr" target="_blank" rel="noopener noreferrer" class="bg-white/5 hover:bg-white/10 active:scale-95 text-center text-white font-medium px-5 py-3 rounded-xl border border-white/10 transition-all text-xs md:text-sm flex items-center justify-center space-x-2 interactive-link">
                     <i class="fa-solid fa-landmark"></i>
-                    <span>안산시 공식 시청 홈페이지</span>
+                    <span data-i18n="footer-btn1">안산시 공식 시청 홈페이지</span>
                 </a>
-                <a href="mailto:contact@ansan-reversal.kr" class="bg-white/5 hover:bg-white/10 active:scale-95 text-center text-white font-medium px-5 py-3 rounded-xl border border-white/10 transition-all text-xs md:text-sm flex items-center justify-center space-x-2">
+                <a href="mailto:contact@ansan-reversal.kr" class="bg-white/5 hover:bg-white/10 active:scale-95 text-center text-white font-medium px-5 py-3 rounded-xl border border-white/10 transition-all text-xs md:text-sm flex items-center justify-center space-x-2 interactive-link">
                     <i class="fa-regular fa-envelope"></i>
-                    <span>프로젝트 문의처</span>
+                    <span data-i18n="footer-btn2">프로젝트 문의처</span>
                 </a>
             </div>
         </div>
 
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] md:text-xs text-gray-500">
-            <p class="text-center md:text-left">© 2026 안산의 진짜 반전. All rights reserved.</p>
-            <div class="flex space-x-4 md:space-x-6 justify-center">
-                <a href="#hero" class="hover:text-white transition-colors">위로 가기</a>
+            <p class="text-center md:text-left" data-i18n="footer-copy">© 2026 안산의 진짜 반전. All rights reserved.</p>
+            <div class="flex space-x-4 md:space-x-6 justify-center z-20">
+                <a href="#hero" class="hover:text-white transition-colors interactive-link" data-i18n="footer-link1">위로 가기</a>
                 <span>|</span>
-                <a href="#reversal-detail" class="hover:text-white transition-colors">중범죄 팩트 통계</a>
+                <a href="#reversal-detail" class="hover:text-white transition-colors interactive-link" data-i18n="footer-link2">중범죄 팩트 통계</a>
                 <span>|</span>
-                <a href="#visit-points" class="hover:text-white transition-colors">가볼만한 명소</a>
+                <a href="#visit-points" class="hover:text-white transition-colors interactive-link" data-i18n="footer-link3">가볼만한 명소</a>
             </div>
         </div>
     </div>
 </footer>
 
 <script>
-    // 안산 반전 스위치 토글 상태
+    // [전역 변수 통합 관리] - ReferenceError 및 순서 에러를 근본적으로 차단하기 위해 최상단에 일괄 선언
+    let currentLanguage = 'ko';
     let ansanReversed = false;
+    let typingTimer = null;
 
+    // [2-1] 국문/영문 번역 사전 데이터베이스
+    const dictionary = {
+        ko: {
+            "nav-home": "홈",
+            "nav-intro": "어떤 도시인가요?",
+            "nav-cards": "매력 카드",
+            "nav-truth": "오해와 진실",
+            "nav-points": "방문 포인트",
+            "nav-gallery": "갤러리",
+            "btn-explore-top": "안산 여행하기",
+            "hero-tag": "회색빛 편견에 가려진 도시",
+            "hero-sub": "진짜 \"안산\"을",
+            "hero-end": "봅니다.",
+            "hero-desc": "공업 도시라는 회색빛 장막 뒤에 숨겨진 70%의 풍요로운 녹지. 편견을 걷어내는 순간, 완전히 새로운 안산의 숨결이 시작됩니다.",
+            "btn-toggle": "안산의 진짜 반전 보기",
+            "btn-toggle-back": "회색빛 편견 돌려놓기",
+            "btn-more": "자세히 알아보기",
+            "g-prej-title": "편견: 공업 도시의 그늘",
+            "g-prej-desc": "회색빛 굴뚝, 차가운 쇳소리, 이방인의 어색함",
+            "g-real-title": "반전: 70%의 청정 녹색도시",
+            "g-real-desc": "안산갈대습지공원, 대부도의 갯벌과 눈부신 낙조",
+            "intro-subtag": "THE REAL STORY",
+            "intro-title": "안산시는 어떤 도시인가요?",
+            "intro-desc": "많은 이들에게 안산은 공업 단지, 회색빛 공장지대, 혹은 외지인과 치안에 대한 막연한 부정적인 이야기들로 먼저 기억되곤 합니다.",
+            "intro-col1-title": "대중들의 차가운 시선과 오해",
+            "intro-col1-desc": "산업화 시기에 구축된 거대 반월공단 이미지, 외국인 노동자가 많아 왠지 무섭고 어두울 것이라는 편견, 미디어에서 각색된 단편적인 뉴스들이 모여 안산을 차갑게 가두어 왔습니다.",
+            "intro-col2-title": "숨겨진 가슴 벅찬 사실들",
+            "intro-col2-desc": "그러나 실제로 안산은 전국 대도시 최고 수준인 70% 이상의 도심 녹지율을 품고 있으며, 강력범죄율이 현저하게 감축된 안전한 계획도시이자 대부도 해안선과 풍부한 먹거리, 다채로운 거리 축제를 간직한 매력 만점의 명소입니다.",
+            "ev-title": "가장 완벽한 세 가지 반전 증거",
+            "ev-card1-title": "전국 최고 수준의 맑고 푸른 도심 녹지율",
+            "ev-card1-desc": "안산은 자연 정화의 보고인 ‘안산갈대습지공원’을 시작으로 도심 구석구석을 유기적인 숲길로 연결한 공원 설계 도시입니다. 사방을 둘러보아도 항상 나무와 맑은 공기가 당신의 일상을 정화합니다.",
+            "ev-card2-title": "빅데이터로 가볍게 깨부수는 체감 안전 지수",
+            "ev-card2-desc": "미디어가 증폭해 온 부정적 프레임과는 다릅니다. 안산시는 전국에서 손꼽히는 촘촘한 스마트 치안 CCTV 플랫폼을 가동하여 5대 범죄 발생율을 급격하게 떨어트렸으며, 평화로운 안심 로컬 라이프를 사수하고 있습니다.",
+            "ev-card3-title": "수도권 최인접 해변과 오감만족 여행자 코스",
+            "ev-card3-desc": "끝없이 넓게 펼쳐진 서해 대부도의 황홀한 낙조, 원곡동 골목길에서 향유하는 아시아 전역의 풍성한 오리지널 미식 문화, 그리고 조선 최고의 화가 김홍도의 예술적 기운이 깃든 미술관까지 매일 새로운 재미가 찾아옵니다.",
+            "re-title": "팩트 체크: 편견을 거둬내는 순간의 진실",
+            "re-subtitle": "추측이 아닌 숫자와 객관적인 사실이 안산시의 매력을 가감 없이 보여줍니다.",
+            "re-col1-header": "도대체 얼마나 녹지가 많나요?",
+            "re-col1-desc": "공단 배후 도시로 오인받던 안산은 사실 공업단지 면적의 수 배가 넘는 녹지축을 보유하고 있습니다. 도심 한가운데 수십만 평에 이르는 공원들이 기하학적으로 배치된 대한민국 최초의 완전 계획도시 모델입니다.",
+            "re-col1-sub": "“숨 막히던 회색이 피톤치드 가득한 녹색으로”",
+            "re-col1-subdesc": "안산 시내 어디에서든 머리맡을 들어 올리면 푸른 산과 공원 산책로가 시야에 닿습니다. 수만 평의 자연을 한 걸음에 누리는 것은 안산 시민들만의 평범한 일상이자 비교할 수 없는 거주 강점입니다.",
+            "re-col1-quote": "\"안산시 1인당 도시공원 확보 면적은 서울시 평균의 무려 2배에 육박합니다.\"",
+            "re-stat1-tag": "안산시 녹지비율",
+            "re-stat2-tag": "전국 대도시 평균",
+            "re-col2-title": "“실제로 확인하는 우리 동네 치안 등급”",
+            "re-col2-desc": "안산시의 범죄율이 터무니없이 높다는 편견은 미디어가 극적으로 소비한 허상에 가깝습니다. 실제 안전행정부 및 수사기관 통계를 확인해 보면, 대형 CCTV 통합관제망이 24시간 도심 전체를 밀착 사수하고 있어 강력범죄 건수는 다른 주요 광역시 및 인접 수도권보다 확연하게 통제되고 있습니다.",
+            "re-col2-header": "정말로 치안이 불안할까요?",
+            "re-col2-boxdesc": "세계가 인정하는 첨단 스마트 CCTV 안심 귀가 서비스를 탑재하여 24시간 실시간 사각지대 차단 시스템이 작동하고 있습니다. 다채로운 인종이 서로의 로컬 문화를 지지하며 한없이 평화롭게 거주하는 아름다운 상생의 모델입니다.",
+            "re-col2-boxstat": "국토교통부 스마트시티 인증 획득",
+            "re-col3-header": "안산은 회색 공장뿐이다?",
+            "re-col3-desc": "조선시대 단원 김홍도가 산수화를 그리고 성장하던 호젓하고 수려한 경관이 바로 안산의 기반입니다. 대부도 낙조전망대와 구봉도 대부해솔길은 매주 주말 전국에서 수많은 사진작가들이 줄을 서서 찾아올 정도로 전율 어린 경관을 선사합니다.",
+            "re-col3-stat1-tag": "매년 거리극 방문자",
+            "re-col3-stat1-val": "70만 명+",
+            "re-col3-stat2-tag": "대부도 연간 관광자",
+            "re-col3-stat2-val": "100만 명+",
+            "re-col3-sub": "“도심 속 아트 갤러리부터 이색 대축제까지”",
+            "re-col3-subdesc": "멀리 비행기를 타고 갈 필요 없이, 단 하루 만에 대부해솔길의 시원한 바닷바람과 원곡동 다문화거리 아시안 정통 셰프 푸드코스를 섭렵하고 경기도미술관의 우아한 실내 조각전을 산책할 수 있습니다. 안산국제거리극축제가 열리는 5월에는 온 거리가 거대한 판타지 동화 속 무대로 탈바꿈합니다.",
+            "pt-title": "안산 라이프 핵심 로드맵",
+            "pt-subtitle": "정착부터 관광, 축제까지 마음에 드는 이상적인 루트를 선택해 보세요.",
+            "pt-card1-title": "살기 좋은 주거와 교통 인프라",
+            "pt-card1-desc": "사통팔달 전철망과 신안산선 개통 예정으로 서울 핵심지까지 30분대 진입을 눈앞에 두고 있습니다. 넓은 녹지로 미세먼지가 차단되며 도보 거리마다 어린이 공원과 종합 편의시설이 탄탄하게 배치되어 신혼부부 및 패밀리층의 거주 인기가 매우 높습니다.",
+            "pt-card1-tag": "서울 접근성과 쾌적한 숲세권 일상이 결합된 도시",
+            "pt-card2-title": "감성 터지는 바다와 로컬 명소",
+            "pt-card2-desc": "안산의 보물섬 대부도는 조력발전소 달전망대에서 아찔한 바다전망을 구경하고, 구봉도 바닷길의 낙조를 보며 여유를 찾을 수 있는 수도권 대표 힐링 코스입니다. 주말마다 해변을 따라 감성 카페들이 성황을 이룹니다.",
+            "pt-card2-tag": "시화호 달전망대 및 대부해솔길 드라이브 추천",
+            "pt-card3-title": "글로벌 에너지가 숨쉬는 축제",
+            "pt-card3-desc": "아스팔트 광덕대로를 화려한 서커스와 공중 퍼포먼스로 가득 메우는 ‘안산국제거리극축제’와 아시안 정통 셰프들의 맛과 흥겨움이 가득한 다문화 푸드 페스티벌은 오직 안산에서만 만끽할 수 있는 다채로운 문화 유산입니다.",
+            "pt-card3-tag": "매년 5월 펼쳐지는 한국 최고의 야외 공연 축제",
+            "ga-title": "안산 로컬 갤러리",
+            "ga-subtitle": "아름다운 안산의 일상과 풍경을 생생한 실제 사진으로 감상해 보세요.",
+            "ga-card1-title": "안산갈대습지공원",
+            "ga-card1-desc": "자연 정화의 보고이자 바람에 흔들리는 갈대의 합창",
+            "ga-card2-title": "대부도 낙조 전망대",
+            "ga-card2-desc": "서해안 바다 위를 가득 물들이는 경이로운 황금빛 석양",
+            "ga-card3-title": "안산국제거리극축제",
+            "ga-card3-desc": "매년 봄, 일상적인 아스팔트를 동화 속 극장으로 깨우는 열정",
+            "ga-card4-title": "경기도미술관",
+            "ga-card4-desc": "화랑유원지 호수 옆에 자리 잡은 수준 높은 현대 예술 공간",
+            "ga-card5-title": "시화호 조력발전소",
+            "ga-card5-desc": "세계 최대 규모를 자랑하는 친환경 해양 청정 에너지 거점",
+            "ga-card6-title": "원곡동 다문화거리",
+            "ga-card6-desc": "세계 곳곳의 신선하고 개성 넘치는 로컬 푸드가 공존하는 미식 성지",
+            "cta-title": "편견 너머에 진정한 가치가 기다립니다",
+            "cta-desc": "안산을 향한 오래된 프레임을 한 발짝만 벗어나 보세요. 푸른 자연과 흥겨운 거리, 다정한 일상의 온기가 당신을 반갑게 맞이합니다.",
+            "btn-explore-bottom": "안산시 소개 더 알아보기",
+            "footer-brand": "안산시 브랜드 커뮤니티",
+            "footer-desc": "이 웹사이트는 회색빛 오해 속에 숨겨진 경기 안산시의 청량하고 포용력 가득한 본모습을 투명하게 알리기 위해 설계된 로컬 캠페인 웹 아카이브입니다.",
+            "footer-btn1": "안산시 공식 시청 홈페이지",
+            "footer-btn2": "프로젝트 문의처",
+            "footer-copy": "© 2026 안산의 진짜 반전. All rights reserved.",
+            "footer-link1": "위로 가기",
+            "footer-link2": "중범죄 팩트 통계",
+            "footer-link3": "가볼만한 명소",
+            "table-head1": "비교 행정 구역",
+            "table-head2": "인구 10만 명당 범죄 발생율",
+            "table-head3": "체감 치안 만족도",
+            "table-row1-col1": "전국 주요 광역 대도시 평균",
+            "table-row1-col2": "약 1,120건",
+            "table-row2-col1": "수도권 인구 밀집 신도시 A",
+            "table-row2-col2": "약 980건",
+            "table-row3-col1": "경기도 안산시 (실제 지표)",
+            "table-row3-col2": "약 810건 (안전망 확보)",
+            "tag-reverse": "수도권 유일의 반전 녹색도시",
+            "hero-desc-rev": "전국 대도시 최고 수준의 70%가 넘는 푸르른 녹색 심장. 직접 경험해 본 이들에게만 문을 열어주는 청량한 자연과 생기의 무대입니다."
+        },
+        en: {
+            "nav-home": "Home",
+            "nav-intro": "About Ansan",
+            "nav-cards": "Key Merits",
+            "nav-truth": "Myths & Facts",
+            "nav-points": "Roadmap",
+            "nav-gallery": "Gallery",
+            "btn-explore-top": "Explore Ansan",
+            "hero-tag": "A City Hidden in Gray Prejudice",
+            "hero-sub": "See the Real \"Ansan\"",
+            "hero-end": ".",
+            "hero-desc": "Over 70% of lush green spaces hidden behind the gray curtain of an industrial city. The moment you clear the prejudice, a completely new breath of Ansan begins.",
+            "btn-toggle": "See the True Reversal",
+            "btn-toggle-back": "Turn Back to Prejudice",
+            "btn-more": "Learn More",
+            "g-prej-title": "Prejudice: Shadow of Industrial City",
+            "g-prej-desc": "Gray chimneys, cold iron sounds, unfamiliarity with foreign workers",
+            "g-real-title": "Reversal: 70% Clean Green City",
+            "g-real-desc": "Ansan Reed Marsh Park, mudflats and stunning sunsets of Daebudo",
+            "intro-subtag": "THE REAL STORY",
+            "intro-title": "What kind of city is Ansan?",
+            "intro-desc": "For many, Ansan is primarily remembered for its industrial complexes, gray factory zones, or vague negative rumors about safety and foreign residents.",
+            "intro-col1-title": "Cold Eyes & Misunderstandings",
+            "intro-col1-desc": "The image of a massive Banwol industrial complex built during the industrialization era, prejudice that it would be scary due to many foreign workers, and fragmented news reports have trapped Ansan in cold perspectives.",
+            "intro-col2-title": "Inspiring Truths Untold",
+            "intro-col2-desc": "In reality, Ansan boasts a urban green space ratio of over 70%, the highest among major cities in Korea. It is a safe, meticulously planned city with vastly reduced crime rates, pristine coastal views of Daebudo, original Asian food districts, and world-class street arts festivals.",
+            "ev-title": "Three Perfect Proofs of Reversal",
+            "ev-card1-title": "The Highest Green Ratio in Major Korean Cities",
+            "ev-card1-desc": "Ansan is an ecologically designed city, starting with 'Ansan Reed Marsh Park' and linking urban neighborhoods with organic forest trails. Clean air and fresh oxygen are always next to you.",
+            "ev-card2-title": "Safety Indices Backed by Objective Big Data",
+            "ev-card2-desc": "Far from media-magnified concerns, Ansan operates Korea's densest smart CCTV grid, drastically reducing the five major crime rates to secure a highly safe, peaceful environment for everyone.",
+            "ev-card3-title": "Closest Coastal Getaway & Rich Cultural Trail",
+            "ev-card3-desc": "The golden horizon of Daebudo Sunset Road, a journey through genuine Asian cuisine in Wongok-dong, and modern art galleries reflecting the heritage of Joseon's master artist Kim Hong-do offer endless weekend wonder.",
+            "re-title": "Fact Check: Truth Behind the Veil",
+            "re-subtitle": "Hard numbers and objective statistics reveal Ansan's genuine quality of life.",
+            "re-col1-header": "How green is it exactly?",
+            "re-col1-desc": "Often mistaken as a purely factory-based district, Ansan actually reserves multiple times the area of its industrial parks for green belts. It is Korea's first fully-planned city model featuring massive public parks integrated in a geometric layout.",
+            "re-col1-sub": "“From Suffocating Industrial Gray to Healing Green”",
+            "re-col1-subdesc": "Look up anywhere in Ansan to find a verdant mountain ridge or park trail. Stepping into thousands of acres of pristine woodland is just a casual, daily luxury for our residents.",
+            "re-col1-quote": "\"The public park space per capita in Ansan is nearly double that of Seoul's average.\"",
+            "re-stat1-tag": "Ansan Green Ratio",
+            "re-stat2-tag": "Korean City Average",
+            "re-col2-title": "“Our Real Neighborhood Crime Stats”",
+            "re-col2-desc": "The myth of high crime rates is an exaggeration of historical events. Actual national statistics show that Ansan's comprehensive smart safety infrastructure reliably regulates crime levels lower than other suburban cities.",
+            "re-col2-header": "Is it really unsafe?",
+            "re-col2-boxdesc": "We run a world-class smart CCTV defense matrix that actively monitors blind spots. It is a harmonious global community where diverse cultures happily support each other.",
+            "re-col2-boxstat": "Awarded Smart City Certificate by Government",
+            "re-col3-header": "Is Ansan just a factory floor?",
+            "re-col3-desc": "Ansan was once the serene, picturesque home where Joseon-era landscape master Kim Hong-do grew up. Daebudo Sunset Observatory and Haesolgil coast now draw crowds of professional photographers every weekend.",
+            "re-col3-stat1-tag": "Annual Festival Visitors",
+            "re-col3-stat1-val": "700,000+",
+            "re-col3-stat2-tag": "Annual Daebudo Tourists",
+            "re-col3-stat2-val": "1M+",
+            "re-col3-sub": "“From Chic Indoor Galleries to Great Street Shows”",
+            "re-col3-subdesc": "No flights required. In just one day, you can breath the refreshing sea breeze of Daebudo, taste original cuisines of Asian master chefs, and stroll through 경기도미술관. In May, our main avenue completely transforms into a grand outdoor street theatre.",
+            "pt-title": "Ansan Life Map",
+            "pt-subtitle": "Choose your ideal path, from settling down to travel and festivals.",
+            "pt-card1-title": "Outstanding Housing & Transport Infrastructure",
+            "pt-card1-desc": "Equipped with dense subway networks and the upcoming Shin-Ansan high-speed rail, Seoul's key centers are under 30 minutes away. The vast green belt effectively blocks fine dust, making it a highly popular residential area for families.",
+            "pt-card1-tag": "Combining Seoul proximity with clean, forest-rich environments",
+            "pt-card2-title": "Captivating Oceanside & Local Escapes",
+            "pt-card2-desc": "Daebudo Island is a beautiful retreat where you can view stunning oceanscapes from the Moon Observatory and catch peaceful sunsets. Trendy seaside cafés populate the beaches for great weekend vibes.",
+            "pt-card2-tag": "Highly recommended: Sihwaho Moon Tower and Haesolgil Drive",
+            "pt-card3-title": "Vibrant and Festive Global Energies",
+            "pt-card3-desc": "The Ansan Street Arts Festival fills our main streets with gorgeous acrobatics and theatrical plays, while the Wongok multicultural food fair offers sensory delights unlike anywhere else in Korea.",
+            "pt-card3-tag": "The absolute finest outdoor street performance festival held every May",
+            "ga-title": "Ansan Scenary Gallery",
+            "ga-subtitle": "Preview the vibrant and relaxing moments of our city in real high-res photography.",
+            "ga-card1-title": "Ansan Reed Marsh Park",
+            "ga-card1-desc": "A major ecological reserve filled with whispering reeds",
+            "ga-card2-title": "Daebudo Sunset Observatory",
+            "ga-card2-desc": "Golden horizon along the spectacular West Coast line",
+            "ga-card3-title": "Ansan Street Arts Festival",
+            "ga-card3-desc": "Transforming public asphalt into magical theater every spring",
+            "ga-card4-title": "Gyeonggido Museum of Art",
+            "ga-card4-desc": "A beautiful modern art space located right by the lake",
+            "ga-card5-title": "Sihwa Tidal Power Station",
+            "ga-card5-desc": "The world's largest renewable ocean energy generator",
+            "ga-card6-title": "Wongok Multi-Cultural Street",
+            "ga-card6-desc": "A gourmet sanctuary where authentic Asian recipes thrive",
+            "cta-title": "Genuine Values Await Beyond Bias",
+            "cta-desc": "Step out of the old industrial frame. Fresh forests, cheerful streets, and warm neighbors are waiting to welcome you.",
+            "btn-explore-bottom": "Explore Ansan Further",
+            "footer-brand": "Ansan Brand Community",
+            "footer-desc": "This website is a local campaign archive designed to transparently promote the clean, inclusive, and fresh reality of Ansan, Gyeonggi-do, hidden behind historical prejudices.",
+            "footer-btn1": "Official Ansan City Website",
+            "footer-btn2": "Contact Project Team",
+            "footer-copy": "© 2026 The Real Ansan. All rights reserved.",
+            "footer-link1": "Scroll to Top",
+            "footer-link2": "Crime Rate Statistics",
+            "footer-link3": "Recommended Destinations",
+            "table-head1": "Comparative Area",
+            "table-head2": "5 Major Crimes per 100K",
+            "table-head3": "Perceived Safety Rate",
+            "table-row1-col1": "National Major Metro Average",
+            "table-row1-col2": "approx. 1,120 cases",
+            "table-row2-col1": "Dense Capital Area New Town A",
+            "table-row2-col2": "approx. 980 cases",
+            "table-row3-col1": "Ansan City (Actual Record)",
+            "table-row3-col2": "approx. 810 cases (Secured)",
+            "tag-reverse": "The Only Eco-Friendly Reverse City",
+            "hero-desc-rev": "A vibrant green heart comprising over 74% urban forest. It opens its doors to fresh nature and creative stages only to those who dare to experience it firsthand."
+        }
+    };
+
+    // [번역 유틸리티]
+    function toggleLanguage() {
+        currentLanguage = currentLanguage === 'ko' ? 'en' : 'ko';
+        document.getElementById('langBtn').textContent = currentLanguage === 'ko' ? 'EN' : 'KO';
+        document.documentElement.lang = currentLanguage;
+        applyTranslations();
+    }
+
+    function applyTranslations() {
+        const langData = dictionary[currentLanguage];
+        
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (langData[key]) {
+                element.textContent = langData[key];
+            }
+        });
+
+        // 반전 상태 보정
+        const tagText = document.getElementById('tagText');
+        const heroDesc = document.getElementById('heroDesc');
+        if (ansanReversed) {
+            tagText.textContent = langData["tag-reverse"];
+            heroDesc.textContent = langData["hero-desc-rev"];
+        } else {
+            tagText.textContent = langData["hero-tag"];
+            heroDesc.textContent = langData["hero-desc"];
+        }
+
+        startTypingEffect();
+    }
+
+    // [2-2] 타이틀 타이핑 효과
+    function startTypingEffect() {
+        const typingSpan = document.getElementById('typingTitle');
+        const koreanText = "당신이 오해했던 도시,";
+        const englishText = "The city you misunderstood,";
+        const targetText = currentLanguage === 'ko' ? koreanText : englishText;
+        
+        let index = 0;
+        typingSpan.textContent = "";
+        
+        if (typingTimer) clearInterval(typingTimer);
+        
+        typingTimer = setInterval(() => {
+            if (index < targetText.length) {
+                typingSpan.textContent += targetText.charAt(index);
+                index++;
+            } else {
+                clearInterval(typingTimer);
+            }
+        }, 120);
+    }
+
+    // [안산 반전 스위치 토글]
     function toggleAnsanReversal() {
-        const body = document.body;
         const hero = document.getElementById('hero');
         const heroTag = document.getElementById('heroTag');
         const tagDot = document.getElementById('tagDot');
@@ -639,29 +977,27 @@
         const graphicPrejudice = document.getElementById('graphicPrejudice');
         const graphicReal = document.getElementById('graphicReal');
         const heroGraphicBox = document.getElementById('heroGraphicBox');
+        const langData = dictionary[currentLanguage];
 
         if (!ansanReversed) {
-            // 회색빛 ➔ 푸르른 녹색 반전 모드 ON
-            hero.style.backgroundColor = '#0A5C36'; // ansanGreen
+            // Reversal ON
+            hero.style.backgroundColor = '#0A5C36';
             heroGraphicBox.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             
-            // 태그 및 타이틀 전환
             heroTag.className = "mb-4 inline-flex items-center space-x-2 bg-ansanLightGreen/20 border border-ansanLightGreen/30 px-3.5 py-1.5 rounded-full text-[11px] md:text-xs text-emerald-200 transition-all duration-1000";
             tagDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-            tagText.textContent = "수도권 유일의 반전 녹색도시";
+            tagText.textContent = langData["tag-reverse"];
 
             heroTitle.className = "gmarket-title text-3xl xs:text-4xl sm:text-5xl md:text-6xl text-white leading-tight mb-4 md:mb-6 transition-all duration-1000 break-keep";
             heroTitleColor.className = "text-emerald-300 underline decoration-wavy decoration-ansanOrange underline-offset-4 md:underline-offset-8";
-            heroTitleColor.textContent = '진짜 "안산"을';
+            heroTitleColor.textContent = langData["hero-sub"];
 
             heroDesc.className = "text-sm sm:text-base md:text-lg text-emerald-100 max-w-xl mb-6 md:mb-8 font-light leading-relaxed transition-all duration-1000 break-keep";
-            heroDesc.textContent = "전국 대도시 최고 수준의 70%가 넘는 푸르른 녹색 심장. 직접 경험해 본 이들에게만 문을 열어주는 청량한 자연과 생기의 무대입니다.";
+            heroDesc.textContent = langData["hero-desc-rev"];
 
-            // 스위치 외관 변경
             switchIcon.className = "fa-solid fa-toggle-on text-xl md:text-2xl text-emerald-300 rotate-180 transition-transform duration-500";
-            switchText.textContent = "회색빛 편견 돌려놓기";
+            switchText.textContent = langData["btn-toggle-back"];
 
-            // 우측 그래픽 반전 효과
             graphicPrejudice.classList.add('opacity-0', 'scale-95');
             setTimeout(() => {
                 graphicPrejudice.classList.add('hidden');
@@ -674,27 +1010,24 @@
 
             ansanReversed = true;
         } else {
-            // 원복 모드 (회색빛 편견 상태)
-            hero.style.backgroundColor = ''; // CSS transition handles dark/light background
+            // Reversal OFF
+            hero.style.backgroundColor = '';
             heroGraphicBox.style.borderColor = 'rgba(255, 255, 255, 0.05)';
 
-            // 태그 및 타이틀 원상복귀
             heroTag.className = "mb-4 inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full text-[11px] md:text-xs text-ansanLightGray transition-all duration-1000";
             tagDot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-            tagText.textContent = "회색빛 편견에 가려진 도시";
+            tagText.textContent = langData["hero-tag"];
 
             heroTitle.className = "gmarket-title text-3xl xs:text-4xl sm:text-5xl md:text-6xl text-ansanLightGray leading-tight mb-4 md:mb-6 transition-all duration-1000 break-keep";
             heroTitleColor.className = "text-red-400";
-            heroTitleColor.textContent = '진짜 "안산"을';
+            heroTitleColor.textContent = langData["hero-sub"];
 
             heroDesc.className = "text-sm sm:text-base md:text-lg text-gray-400 dark:text-gray-500 max-w-xl mb-6 md:mb-8 font-light leading-relaxed transition-all duration-1000 break-keep";
-            heroDesc.textContent = "공업 도시라는 회색빛 장막 뒤에 숨겨진 70%의 풍요로운 녹지. 편견을 걷어내는 순간, 완전히 새로운 안산의 숨결이 시작됩니다.";
+            heroDesc.textContent = langData["hero-desc"];
 
-            // 스위치 외관 원상복귀
             switchIcon.className = "fa-solid fa-toggle-off text-xl md:text-2xl transition-transform duration-500";
-            switchText.textContent = "안산의 진짜 반전 보기";
+            switchText.textContent = langData["btn-toggle"];
 
-            // 우측 그래픽 복구
             graphicReal.classList.add('opacity-0', 'translate-y-10');
             graphicReal.classList.remove('translate-y-0');
             setTimeout(() => {
@@ -710,7 +1043,7 @@
         }
     }
 
-    // GNB 헤더 스크롤 비주얼 전환 효과
+    // [GNB 헤더 디자인 스크롤 효과]
     function updateHeaderStyle() {
         const header = document.getElementById('mainHeader');
         const logoText = document.getElementById('headerLogoText');
@@ -718,33 +1051,28 @@
         
         if (window.scrollY > 50) {
             if (isDarkMode) {
-                // 다크모드 스크롤 상태 GNB
                 header.className = "fixed top-0 left-0 w-full z-50 bg-neutral-950/95 text-white backdrop-blur-md shadow-md py-2 md:py-3 border-b border-neutral-800/50";
                 logoText.className = "gmarket-title text-base md:text-xl tracking-wider text-white";
                 header.querySelectorAll('#headerNav a').forEach(el => {
-                    el.className = "text-gray-300 hover:text-ansanOrange transition-colors";
+                    el.className = "text-gray-300 hover:text-ansanOrange transition-colors interactive-link";
                 });
             } else {
-                // 라이트모드 스크롤 상태 GNB
                 header.className = "fixed top-0 left-0 w-full z-50 bg-white/95 text-gray-800 backdrop-blur-md shadow-md py-2 md:py-3 border-b border-gray-100";
                 logoText.className = "gmarket-title text-base md:text-xl tracking-wider text-gray-900";
                 header.querySelectorAll('#headerNav a').forEach(el => {
-                    el.className = "text-gray-700 hover:text-ansanOrange transition-colors";
+                    el.className = "text-gray-700 hover:text-ansanOrange transition-colors interactive-link";
                 });
             }
         } else {
-            // 스크롤 상단 투명화 상태 GNB
             header.className = "fixed top-0 left-0 w-full z-50 bg-transparent py-3 md:py-4 text-white";
             logoText.className = "gmarket-title text-base md:text-xl tracking-wider text-white";
             header.querySelectorAll('#headerNav a').forEach(el => {
-                el.className = "text-white hover:text-ansanOrange transition-colors";
+                el.className = "text-white hover:text-ansanOrange transition-colors interactive-link";
             });
         }
     }
 
-    window.addEventListener('scroll', updateHeaderStyle);
-
-    // 다크모드 토글 함수
+    // [다크모드 제어]
     function toggleDarkMode() {
         const htmlElement = document.documentElement;
         const icon = document.getElementById('darkModeIcon');
@@ -761,8 +1089,128 @@
         updateHeaderStyle();
     }
 
-    // 초기 테마 설정 로드
-    (function initTheme() {
+    // [커스텀 부드러운 스크롤 이동 함수]
+    function scrollToSection(id) {
+        const target = document.getElementById(id);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function smoothScrollToPoints() {
+        const visitSection = document.getElementById('visit-points');
+        if (visitSection) {
+            visitSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // [마우스 포인터 인터랙티브 바인딩 (데스크톱 전용)]
+    function initCustomCursor() {
+        const cursor = document.getElementById('customCursor');
+        const follower = document.getElementById('customCursorFollower');
+        
+        if (window.innerWidth >= 1024 && cursor && follower) {
+            let mouseX = 0, mouseY = 0;
+            let followerX = 0, followerY = 0;
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                cursor.style.left = mouseX + 'px';
+                cursor.style.top = mouseY + 'px';
+            });
+
+            function animateFollower() {
+                const dx = mouseX - followerX;
+                const dy = mouseY - followerY;
+                
+                followerX += dx * 0.15;
+                followerY += dy * 0.15;
+                
+                follower.style.left = followerX + 'px';
+                follower.style.top = followerY + 'px';
+                
+                requestAnimationFrame(animateFollower);
+            }
+            animateFollower();
+
+            document.querySelectorAll('.interactive-link, a, button, input, select').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    cursor.classList.add('hovered');
+                    follower.classList.add('hovered');
+                });
+                el.addEventListener('mouseleave', () => {
+                    cursor.classList.remove('hovered');
+                    follower.classList.remove('hovered');
+                });
+            });
+        }
+    }
+
+    // [배경 점/파티클 시스템 (HTML5 Canvas)]
+    function initParticles() {
+        const canvas = document.getElementById('particleCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        let particles = [];
+        const particleCount = 45;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height + canvas.height;
+                this.size = Math.random() * 4 + 1.5;
+                this.speedY = -(Math.random() * 0.8 + 0.2);
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.color = Math.random() > 0.55 ? 'rgba(10, 92, 54, 0.45)' : 'rgba(255, 107, 53, 0.45)';
+                this.opacity = Math.random() * 0.6 + 0.2;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y < -10 || this.x < -10 || this.x > canvas.width + 10) {
+                    this.reset();
+                    this.y = canvas.height + 10;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+            particles[i].y = Math.random() * canvas.height;
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+    }
+
+    // [테마 초기화]
+    function initTheme() {
         const savedTheme = localStorage.getItem('theme');
         const userPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const icon = document.getElementById('darkModeIcon');
@@ -774,12 +1222,45 @@
             document.documentElement.classList.remove('dark');
             if (icon) icon.className = "fa-solid fa-moon text-white text-sm md:text-base";
         }
-    })();
+    }
 
-    // 요소 등장 애니메이션 (Intersection Observer)
-    document.addEventListener('DOMContentLoaded', () => {
-        updateHeaderStyle(); // 초기 헤더 상태 로드
+    // [전역 스크롤 이벤트 바인딩]
+    window.addEventListener('scroll', () => {
+        updateHeaderStyle();
         
+        // 1. 스크롤 진행률 계산
+        const progressBar = document.getElementById('scrollProgressBar');
+        const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (totalScroll > 0) {
+            const scrollPercent = (window.scrollY / totalScroll) * 100;
+            progressBar.style.width = scrollPercent + '%';
+        } else {
+            progressBar.style.width = '0%';
+        }
+
+        // 2. 3D 패럴랙스 가속 효과
+        const scrollY = window.scrollY;
+        const heroGraphicBox = document.getElementById('heroGraphicBox');
+        const heroTextContainer = document.getElementById('heroTextContainer');
+        
+        if (window.innerWidth >= 1024) {
+            if (heroGraphicBox) heroGraphicBox.style.transform = `translateY(${scrollY * 0.12}px)`;
+            if (heroTextContainer) heroTextContainer.style.transform = `translateY(${scrollY * -0.04}px)`;
+        } else {
+            if (heroGraphicBox) heroGraphicBox.style.transform = '';
+            if (heroTextContainer) heroTextContainer.style.transform = '';
+        }
+    });
+
+    // [DOM 로드 완료 후 실행 리스너]
+    document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        updateHeaderStyle();
+        startTypingEffect();
+        initCustomCursor();
+        initParticles();
+        
+        // 스크롤 감지 애니메이션 (Reveal Node)
         const revealElements = document.querySelectorAll('.reveal-node');
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -792,24 +1273,8 @@
             rootMargin: '0px 0px -30px 0px'
         });
 
-        revealElements.forEach(el => observer.observe(el));ㅁ
+        revealElements.forEach(el => observer.observe(el));
     });
-
-    // 부드러운 스크롤 이동 전용 함수
-    function scrollToSection(id) {
-        const target = document.getElementById(id);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
-
-    // CTA 클릭 시 7번에서 5번 '방문 포인트' 섹션으로 부드러운 이동 함수
-    function smoothScrollToPoints() {
-        const visitSection = document.getElementById('visit-points');
-        if (visitSection) {
-            visitSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
 </script>
 
 </body>
