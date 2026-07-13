@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>안산의 진짜 반전 - 숲과 바다, 그리고 사람이 사는 곳</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ansanDarkGray: '#1E2222',
+                        ansanLightGray: '#9CA3AF',
+                        ansanGreen: '#0A5C36',
+                        ansanLightGreen: '#E6F4EA',
+                        ansanOrange: '#FF6B35',
+                        ansanSoftCream: '#F4F7F5',
+                    },
+                    fontFamily: {
+                        title: ['"Black Han Sans"', 'sans-serif'],
+                        body: ['"Noto Sans KR"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; transition: background-color 0.5s ease, color 0.5s ease; }
+        .gmarket-title { font-family: 'Black Han Sans', sans-serif; }
+        .reveal-node { opacity: 0; transform: translateY(20px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+        .reveal-node.revealed { opacity: 1; transform: translateY(0); }
+        #scroll-progress { position: fixed; top: 0; left: 0; height: 4px; background: #FF6B35; z-index: 9999; transition: width 0.2s ease; }
+    </style>
+</head>
+<body class="bg-ansanDarkGray text-white selection:bg-ansanOrange selection:text-white overflow-x-hidden dark:bg-neutral-950">
+
+    <div id="scroll-progress" style="width: 0%"></div>
+
+    <header id="mainHeader" class="fixed top-0 left-0 w-full z-50 bg-transparent py-4 text-white">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <a href="#" class="flex items-center space-x-2">
+                <span class="w-8 h-8 rounded-full bg-ansanOrange flex items-center justify-center font-black text-sm">AS</span>
+                <span class="gmarket-title text-xl">ANSAN : 반전</span>
+            </a>
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-moon"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <section id="hero" class="min-h-screen flex flex-col justify-center items-center px-6 pt-20">
+        <h1 class="gmarket-title text-5xl md:text-7xl text-center leading-tight mb-8">
+            당신이 오해했던 도시,<br>
+            <span class="text-ansanOrange">진짜 "안산"</span>을 봅니다.
+        </h1>
+        <button onclick="scrollToSection('quiz')" class="px-8 py-4 bg-ansanOrange rounded-full font-bold hover:scale-105 transition-transform">스피드 퀴즈 시작</button>
+    </section>
+
+    <section id="quiz" class="py-28 bg-white text-gray-900">
+        <div class="max-w-3xl mx-auto px-6">
+            <h2 class="gmarket-title text-4xl mb-8 text-center text-ansanGreen">안산 마스터 퀴즈</h2>
+            <div id="quiz-container" class="bg-gray-100 p-8 rounded-3xl">
+                <div id="quiz-content">
+                    <p id="question" class="text-xl font-bold mb-6">문제 로딩 중...</p>
+                    <div id="options" class="grid gap-4"></div>
+                </div>
+            </div>
+            <div id="result" class="hidden text-center mt-8">
+                <h3 id="rank-title" class="text-3xl font-bold mb-2"></h3>
+                <p id="score-text" class="text-lg"></p>
+                <button onclick="resetQuiz()" class="mt-4 px-6 py-2 bg-ansanOrange text-white rounded-full">다시 하기</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="guestbook" class="py-28 bg-ansanSoftCream text-gray-900">
+        <div class="max-w-3xl mx-auto px-6">
+            <h2 class="gmarket-title text-4xl mb-12 text-center">안산에게 한마디</h2>
+            <div class="bg-white p-8 rounded-3xl shadow-lg mb-8">
+                <input type="text" id="gb-name" placeholder="닉네임" class="w-full p-3 mb-4 border rounded-xl">
+                <textarea id="gb-comment" placeholder="메시지를 남겨주세요!" class="w-full p-3 mb-4 border rounded-xl h-24"></textarea>
+                <button onclick="addGuestbook()" class="w-full bg-ansanGreen text-white py-3 rounded-xl font-bold">등록하기</button>
+            </div>
+            <div id="gb-list" class="space-y-4"></div>
+        </div>
+    </section>
+
+    <script>
+        
+        // Scroll Progress
+        window.onscroll = () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById("scroll-progress").style.width = scrolled + "%";
+        };
+
+        // Quiz Logic
+        const questions = [
+            { q: "안산시의 도심 녹지율은 대략 몇 %일까요?", a: ["40%", "74%", "90%"], correct: 1 },
+            { q: "서해안 낙조로 유명한 안산의 명소는?", a: ["대부도", "오이도", "제부도"], correct: 0 },
+            { q: "안산은 국토교통부 스마트시티 인증을 받았을까요?", a: ["예", "아니오", "알 수 없음"], correct: 0 }
+        ];
+        let currentQ = 0, score = 0;
+
+        function loadQuiz() {
+            const q = questions[currentQ];
+            document.getElementById('question').innerText = q.q;
+            const opts = document.getElementById('options');
+            opts.innerHTML = '';
+            q.a.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'p-4 border rounded-xl hover:bg-ansanGreen hover:text-white transition';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx);
+                opts.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx) {
+            if (idx === questions[currentQ].correct) score++;
+            currentQ++;
+            if (currentQ < questions.length) loadQuiz();
+            else showResult();
+        }
+
+        function showResult() {
+            document.getElementById('quiz-content').classList.add('hidden');
+            const res = document.getElementById('result');
+            res.classList.remove('hidden');
+            let title = score === 3 ? "🏆 골드 등급: 안산 마스터!" : score >= 2 ? "🥈 실버 등급: 안산 전문가!" : "🥉 브론즈 등급: 안산 입문자!";
+            document.getElementById('rank-title').innerText = title;
+            document.getElementById('score-text').innerText = `당신의 점수: ${score} / ${questions.length}`;
+        }
+
+        function resetQuiz() {
+            currentQ = 0; score = 0;
+            document.getElementById('quiz-content').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            loadQuiz();
+        }
+
+        // Guestbook Logic
+        function addGuestbook() {
+            const name = document.getElementById('gb-name').value;
+            const msg = document.getElementById('gb-comment').value;
+            if(!name || !msg) return;
+            const data = JSON.parse(localStorage.getItem('ansan_guests') || '[]');
+            data.push({name, msg, date: new Date().toLocaleDateString()});
+            localStorage.setItem('ansan_guests', JSON.stringify(data));
+            renderGuestbook();
+        }
+
+        function renderGuestbook() {
+            const list = document.getElementById('gb-list');
+            const data = JSON.parse(localStorage.getItem('ansan_guests') || '[]');
+            list.innerHTML = data.map(item => `
+                <div class="bg-white p-4 rounded-xl shadow">
+                    <p class="font-bold text-ansanGreen">${item.name}</p>
+                    <p>${item.msg}</p>
+                    <small class="text-gray-400">${item.date}</small>
+                </div>
+            `).join('');
+        }
+
+        window.onload = () => { loadQuiz(); renderGuestbook(); };
+
+        // Dark Mode & Scroll Helper (Existing)
+        function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+        function scrollToSection(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); }
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('revealed'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal-node').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>
